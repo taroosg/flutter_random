@@ -28,110 +28,163 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _randomInt = 0;
   int _min = 0;
-  int _max = 1;
+  int _max = 9;
+  Map _range = {
+    'min': 0,
+    'max': 9,
+  };
+  bool _isRunning = false;
+  Timer _timer;
+  List _buttonLabel = ['Start', 'Stop'];
+  String _runButtonLabel = 'Start';
 
+  // 不幸のダイアログ
+  void alert() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: Text('Unhappy letter'),
+          content: Text(
+            'The maximum value must be set larger than the minimum value',
+          ),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              child: Text('OK'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 乱数生成の関数
   void _createRondomInt() {
-    if (_min > _max) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return CupertinoAlertDialog(
-            title: Text('Unhappy letter'),
-            content: Text(
-                'The maximum value must be set larger than the minimum value'),
-            actions: <Widget>[
-              CupertinoDialogAction(
-                child: Text('OK'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          );
-        },
-      );
+    if (_range['min'] >= _range['max']) {
+      alert();
     } else {
-      int count = 0;
-      Timer.periodic(const Duration(milliseconds: 5), (timer) {
+      if (_isRunning) {
+        _timer?.cancel();
         setState(() {
-          final rnd = new Random();
-          _randomInt = _min + rnd.nextInt(_max - _min + 1);
-          // print('min: $_min');
-          // print('max: $_max');
-          // print(_randomInt);
+          _isRunning = false;
+          _runButtonLabel = _buttonLabel[0];
         });
-        count++;
-        if (count > 100) {
-          timer.cancel();
-        }
-      });
+      } else {
+        setState(() {
+          _isRunning = true;
+          _runButtonLabel = _buttonLabel[1];
+        });
+        _timer = Timer.periodic(
+          Duration(
+            milliseconds: 5,
+          ),
+          (Timer timer) => setState(() {
+            final rnd = new Random();
+            _randomInt =
+                _range['min'] + rnd.nextInt(_range['max'] - _range['min'] + 1);
+          }),
+        );
+      }
     }
   }
 
-  void _setMinInt(int value) {
-    setState(() {
-      _min = value;
-    });
-  }
-
-  void _setMaxInt(int value) {
-    setState(() {
-      _max = value;
-    });
+  // 最大値と最小値を選ぶやつの設定
+  void _showMinSelectWindow(String minMax) {
+    var _numList = new List.generate(100, (i) => i);
+    showModalBottomSheet(
+        context: context,
+        builder: (BuildContext builder) {
+          return Container(
+            height: MediaQuery.of(context).copyWith().size.height / 3,
+            child: CupertinoPicker(
+              // 初期値設定
+              scrollController: new FixedExtentScrollController(
+                initialItem: _range[minMax],
+              ),
+              // 選択肢の高さ設定
+              itemExtent: 45.0,
+              // 変更時の処理
+              onSelectedItemChanged: (int value) {
+                setState(() {
+                  _range[minMax] = value;
+                });
+              },
+              // 選択肢の設定
+              children: _numList.map<Center>((int value) {
+                return Center(
+                  child: Text('$value'),
+                );
+              }).toList(),
+            ),
+          );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    var _minList = new List.generate(100, (i) => i);
-    var _maxList = new List.generate(100, (i) => i + 1);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
             Text(
-              'Generate random numbers!',
+              'Generate random number!',
             ),
             Text(
               '$_randomInt',
               style: Theme.of(context).textTheme.display1,
             ),
-            DropdownButton<int>(
-              items: _minList.map<DropdownMenuItem<int>>((int value) {
-                return DropdownMenuItem<int>(
-                  value: value,
-                  child: Text('$value'),
-                );
-              }).toList(),
-              value: _min,
-              hint: Text('select value'),
-              onChanged: (int newValue) {
-                _setMinInt(newValue);
-              },
-            ),
-            DropdownButton<int>(
-              items: _maxList.map<DropdownMenuItem<int>>((int value) {
-                return DropdownMenuItem<int>(
-                  value: value,
-                  child: Text('$value'),
-                );
-              }).toList(),
-              value: _max,
-              hint: Text('select value'),
-              onChanged: (int newValue) {
-                _setMaxInt(newValue);
-              },
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                // 最小値ボタン
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    MaterialButton(
+                      child: Text(
+                        'min: ${_range["min"]}',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 20,
+                        ),
+                      ),
+                      onPressed: () => _showMinSelectWindow('min'),
+                    ),
+                    // 最大値ボタン
+                    MaterialButton(
+                      child: Text(
+                        'max: ${_range["max"]}',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 20,
+                        ),
+                      ),
+                      onPressed: () => _showMinSelectWindow('max'),
+                    ),
+                  ],
+                ),
+                // スタート・ストップボタン
+                Container(
+                  margin: EdgeInsets.all(40.0),
+                  child: CupertinoButton(
+                    child: Text(
+                      '$_runButtonLabel',
+                    ),
+                    color: Colors.deepPurple,
+                    minSize: 50.0,
+                    onPressed: _createRondomInt,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createRondomInt,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
